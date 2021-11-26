@@ -72,6 +72,7 @@ OPERATOR_SRCS = [
     "src/operators/resize-bilinear-nchw.c",
     "src/operators/resize-bilinear-nhwc.c",
     "src/operators/softmax-nc.c",
+    "src/operators/transpose-nd.c",
     "src/operators/unary-elementwise-nc.c",
     "src/operators/unpooling-nhwc.c",
 ]
@@ -7886,6 +7887,7 @@ INTERNAL_HDRS = INTERNAL_MICROKERNEL_HDRS + [
     "src/xnnpack/requantization-stubs.h",
     "src/xnnpack/requantization.h",
     "src/xnnpack/subgraph.h",
+    "src/xnnpack/normalization.h",
 ]
 
 ACCURACY_EVAL_HDRS = INTERNAL_MICROKERNEL_HDRS + [
@@ -9654,6 +9656,7 @@ xnnpack_cc_library(
         ":indirection",
         ":jit",
         ":logging_utils",
+        ":normalization",
         ":operator_run",
         ":packing",
         "@FP16",
@@ -9688,6 +9691,7 @@ xnnpack_cc_library(
         ":indirection_test_mode",
         ":jit_test_mode",
         ":logging_utils",
+        ":normalization_test_mode",
         ":operator_run_test_mode",
         ":packing_test_mode",
         "@FP16",
@@ -9741,6 +9745,26 @@ xnnpack_cc_library(
     deps = [
         ":logging_utils",
     ],
+)
+
+xnnpack_cc_library(
+    name = "normalization",
+    srcs = ["src/normalization.c"],
+    hdrs = INTERNAL_HDRS,
+    gcc_copts = xnnpack_gcc_std_copts(),
+    msvc_copts = xnnpack_msvc_std_copts(),
+)
+
+xnnpack_cc_library(
+    name = "normalization_test_mode",
+    srcs = ["src/normalization.c"],
+    hdrs = INTERNAL_HDRS,
+    copts = [
+        "-UNDEBUG",
+        "-DXNN_TEST_MODE=1",
+    ],
+    gcc_copts = xnnpack_gcc_std_copts(),
+    msvc_copts = xnnpack_msvc_std_copts(),
 )
 
 xnnpack_cc_library(
@@ -13211,6 +13235,14 @@ xnnpack_unit_test(
 )
 
 xnnpack_unit_test(
+    name = "normalization_test",
+    srcs = [
+        "test/normalization.cc",
+    ],
+    deps = OPERATOR_TEST_DEPS,
+)
+
+xnnpack_unit_test(
     name = "prelu_nc_test",
     srcs = [
         "test/prelu-nc.cc",
@@ -13298,6 +13330,15 @@ xnnpack_unit_test(
     srcs = [
         "test/tanh-nc.cc",
         "test/tanh-operator-tester.h",
+    ],
+    deps = OPERATOR_TEST_DEPS,
+)
+
+xnnpack_unit_test(
+    name = "transpose_nd_test",
+    srcs = [
+        "test/transpose-nd.cc",
+        "test/transpose-operator-tester.h",
     ],
     deps = OPERATOR_TEST_DEPS,
 )

@@ -188,6 +188,7 @@ SET(OPERATOR_SRCS
   src/operators/resize-bilinear-nchw.c
   src/operators/resize-bilinear-nhwc.c
   src/operators/softmax-nc.c
+  src/operators/transpose-nd.c
   src/operators/unary-elementwise-nc.c
   src/operators/unpooling-nhwc.c)
 
@@ -6578,6 +6579,7 @@ IF(XNNPACK_TARGET_PROCESSOR MATCHES "^riscv(32|64)$")
 ENDIF()
 ADD_LIBRARY(all_microkernels OBJECT ${ALL_MICROKERNEL_SRCS} ${TABLE_SRCS})
 ADD_LIBRARY(indirection OBJECT src/indirection.c)
+ADD_LIBRARY(normalization OBJECT src/normalization.c)
 ADD_LIBRARY(packing OBJECT src/packing.c)
 ADD_LIBRARY(jit OBJECT ${JIT_SRCS})
 SET_TARGET_PROPERTIES(jit PROPERTIES
@@ -7127,6 +7129,15 @@ IF(XNNPACK_BUILD_TESTS)
   TARGET_LINK_LIBRARIES(negate-nc-test PRIVATE XNNPACK gtest gtest_main)
   ADD_TEST(negate-nc-test negate-nc-test)
 
+  ADD_EXECUTABLE(normalization-test test/normalization.cc)
+  SET_TARGET_PROPERTIES(normalization-test PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO)
+  TARGET_INCLUDE_DIRECTORIES(normalization-test PRIVATE src test)
+  TARGET_LINK_LIBRARIES(normalization-test PRIVATE XNNPACK gtest gtest_main normalization)
+  ADD_TEST(normalization-test normalization-test)
+
   ADD_EXECUTABLE(prelu-nc-test test/prelu-nc.cc)
   SET_TARGET_PROPERTIES(prelu-nc-test PROPERTIES
     CXX_STANDARD 11
@@ -7216,6 +7227,15 @@ IF(XNNPACK_BUILD_TESTS)
   TARGET_INCLUDE_DIRECTORIES(tanh-nc-test PRIVATE src test)
   TARGET_LINK_LIBRARIES(tanh-nc-test PRIVATE XNNPACK gtest gtest_main)
   ADD_TEST(tanh-nc-test tanh-nc-test)
+
+  ADD_EXECUTABLE(transpose-nd-test test/transpose-nd.cc)
+  SET_TARGET_PROPERTIES(transpose-nd-test PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO)
+  TARGET_INCLUDE_DIRECTORIES(transpose-nd-test PRIVATE src test)
+  TARGET_LINK_LIBRARIES(transpose-nd-test PRIVATE XNNPACK gtest gtest_main)
+  ADD_TEST(transpose-nd-test transpose-nd-test)
 
   ADD_EXECUTABLE(truncation-nc-test test/truncation-nc.cc)
   SET_TARGET_PROPERTIES(truncation-nc-test PROPERTIES

@@ -2054,6 +2054,19 @@ enum xnn_status xnn_setup_depth_to_space_nchw2nhwc_x32(
   void* output,
   pthreadpool_t threadpool);
 
+enum xnn_status xnn_create_transpose_nd_x32(
+    size_t num_dims,
+    const size_t* shape,
+    const size_t* output_perm,
+    uint32_t flags,
+    xnn_operator_t* transpose_op_out);
+
+enum xnn_status xnn_setup_transpose_nd_x32(
+    xnn_operator_t transpose_op,
+    const uint32_t* input,
+    uint32_t* output,
+    pthreadpool_t threadpool);
+
 enum xnn_status xnn_create_unpooling2d_nhwc_x32(
   uint32_t input_padding_top,
   uint32_t input_padding_right,
