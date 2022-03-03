@@ -9,6 +9,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#else
+#include <time.h>
+#endif
+
 #include <xnnpack.h>
 #include <xnnpack/allocator.h>
 #include <xnnpack/codecache.h>
@@ -156,6 +162,27 @@ enum xnn_status xnn_create_runtime_v2(
       }
     }
   }
+
+  status = xnn_status_out_of_memory;
+  runtime->profiler = xnn_allocate_zero_memory(sizeof(struct xnn_profiler));
+  if (runtime->profiler == NULL) {
+    xnn_log_error("failed to allocate %zu bytes for profiler", sizeof(struct xnn_profiler));
+    goto error;
+  }
+  runtime->profiler->num_ops = runtime->num_ops;
+  runtime->profiler->op_profiles = xnn_allocate_zero_memory(sizeof(struct xnn_op_profile) * runtime->num_ops);
+  if (runtime->profiler->op_profiles == NULL) {
+    xnn_log_error("failed to allocate %zu bytes for op_profiles", sizeof(struct xnn_op_profile) * runtime->num_ops);
+    goto error;
+  }
+  for (size_t i = 0; i < runtime->num_ops; i++) {
+    if (runtime->opdata[i].operator_objects[0] != NULL) {
+      runtime->profiler->op_profiles[i].name = xnn_operator_type_to_string(runtime->opdata[i].operator_objects[0]->type);
+    } else {
+      runtime->profiler->op_profiles[i].name = NULL;
+    }
+  }
+
   xnn_release_value_allocation_tracker(&mem_alloc_tracker);
 
   runtime->threadpool = threadpool;
@@ -166,6 +193,11 @@ enum xnn_status xnn_create_runtime_v2(
 error:
   xnn_delete_runtime(runtime);
   return status;
+}
+
+struct xnn_profiler* xnn_get_profile_runtime(xnn_runtime_t runtime)
+{
+  return runtime->profiler;
 }
 
 enum xnn_status xnn_setup_runtime(
@@ -217,6 +249,33 @@ enum xnn_status xnn_setup_runtime(
   return xnn_status_success;
 }
 
+
+#if defined(__EMSCRIPTEN__)
+const size_t kMicrosInMillis = 1000;
+
+size_t xnn_elapsed_time_micros() {
+  return emscripten_get_now() * kMicrosInMillis;
+}
+#else
+const size_t kMicrosInSecond = 1000 * 1000;
+const size_t kNanosInMicro = 1000;
+
+size_t xnn_elapsed_time_micros() {
+  struct timespec ts;
+#if defined(__ANDROID__)
+  int err = clock_gettime(CLOCK_BOOTTIME, &ts);
+#elif defined(_WIN32)
+  int err = 1;
+#else
+  int err = clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+  if (err) {
+    return -1;
+  }
+  return ts.tv_sec * kMicrosInSecond + ts.tv_nsec / kNanosInMicro;
+}
+#endif
+
 enum xnn_status xnn_invoke_runtime(
   xnn_runtime_t runtime)
 {
@@ -227,12 +286,19 @@ enum xnn_status xnn_invoke_runtime(
         continue;
       }
 
+      if (runtime->profiler) {
+        runtime->profiler->op_profiles[i].start_time = xnn_elapsed_time_micros();
+      }
+
       const enum xnn_status status = xnn_run_operator(runtime->opdata[i].operator_objects[j], runtime->threadpool);
       if (status != xnn_status_success) {
         return status;
       }
     }
 
+    if (runtime->profiler) {
+      runtime->profiler->op_profiles[i].end_time = xnn_elapsed_time_micros();
+    }
   }
   return xnn_status_success;
 }
@@ -251,6 +317,12 @@ enum xnn_status xnn_delete_runtime(
 
       xnn_release_memory(runtime->blobs);
       xnn_release_simd_memory(runtime->workspace);
+    }
+    if (runtime->profiler != NULL) {
+      if (runtime->profiler->op_profiles != NULL) {
+        xnn_release_memory(runtime->profiler->op_profiles);
+      }
+      xnn_release_memory(runtime->profiler);
     }
 #if XNN_PLATFORM_JIT
     xnn_release_code_cache(&runtime->code_cache);

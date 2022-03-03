@@ -344,6 +344,8 @@ struct xnn_runtime {
   struct xnn_code_cache code_cache;
 #endif // XNN_PLATFORM_JIT
 
+  struct xnn_profiler* profiler;
+
   pthreadpool_t threadpool;
 };
 
