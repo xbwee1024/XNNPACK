@@ -6578,6 +6578,7 @@ IF(XNNPACK_TARGET_PROCESSOR MATCHES "^riscv(32|64)$")
 ENDIF()
 ADD_LIBRARY(all_microkernels OBJECT ${ALL_MICROKERNEL_SRCS} ${TABLE_SRCS})
 ADD_LIBRARY(indirection OBJECT src/indirection.c)
+ADD_LIBRARY(normalization OBJECT src/normalization.c)
 ADD_LIBRARY(packing OBJECT src/packing.c)
 ADD_LIBRARY(jit OBJECT ${JIT_SRCS})
 SET_TARGET_PROPERTIES(jit PROPERTIES
@@ -7126,6 +7127,15 @@ IF(XNNPACK_BUILD_TESTS)
   TARGET_INCLUDE_DIRECTORIES(negate-nc-test PRIVATE src test)
   TARGET_LINK_LIBRARIES(negate-nc-test PRIVATE XNNPACK gtest gtest_main)
   ADD_TEST(negate-nc-test negate-nc-test)
+
+  ADD_EXECUTABLE(normalization-test test/normalization.cc)
+  SET_TARGET_PROPERTIES(normalization-test PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO)
+  TARGET_INCLUDE_DIRECTORIES(normalization-test PRIVATE src test)
+  TARGET_LINK_LIBRARIES(normalization-test PRIVATE XNNPACK gtest gtest_main)
+  ADD_TEST(normalization-test normalization-test)
 
   ADD_EXECUTABLE(prelu-nc-test test/prelu-nc.cc)
   SET_TARGET_PROPERTIES(prelu-nc-test PROPERTIES
